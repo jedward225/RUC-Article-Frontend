@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUC English Writing Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>Paragraphs</h2>
+                <button class="sidebar-close" id="sidebarClose">&times;</button>
+            </div>
+            <div class="sidebar-content">
+                <ul class="paragraph-list" id="paragraphList">
+                    <!-- Dynamically populated -->
+                </ul>
+                <button class="btn btn-add-paragraph" id="addParagraph">
+                    <span>+</span> Add New Paragraph
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="app-header">
+                <button class="menu-btn" id="menuBtn">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1>RUC English Writing Assistant</h1>
+                <div class="header-actions">
+                    <span class="paragraph-indicator" id="paragraphIndicator">Paragraph 1 of 1</span>
+                </div>
+            </header>
+
+            <!-- Content Panels -->
+            <div class="content-panels">
+                <!-- Left Panel - Editor -->
+                <div class="panel editor-panel">
+                    <div class="panel-header">
+                        <div class="editor-toolbar">
+                            <span class="toolbar-item active">Source</span>
+                            <span class="toolbar-item">Rich Text</span>
+                            <div class="toolbar-divider"></div>
+                            <span class="toolbar-item">Bold</span>
+                            <span class="toolbar-item">Italic</span>
+                        </div>
+                    </div>
+                    <div class="editor-container">
+                        <div class="line-numbers" id="lineNumbers"></div>
+                        <textarea
+                            class="editor-textarea"
+                            id="editorTextarea"
+                            placeholder="Enter your English paragraph here..."
+                            spellcheck="false"
+                        ></textarea>
+                    </div>
+                    <!-- Navigation Buttons -->
+                    <div class="editor-nav">
+                        <button class="nav-btn" id="prevParagraph" title="Previous Paragraph">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="18 15 12 9 6 15"></polyline>
+                            </svg>
+                        </button>
+                        <button class="nav-btn" id="nextParagraph" title="Next Paragraph">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Panel - Feedback -->
+                <div class="panel feedback-panel">
+                    <!-- Level Indicator -->
+                    <div class="level-indicator">
+                        <div class="level-header">
+                            <div class="level-info">
+                                <span class="level-badge" id="levelBadge">Level 1</span>
+                                <span class="level-title" id="levelTitle">Macro Structure (PEEL)</span>
+                            </div>
+                            <span class="section-badge" id="sectionBadge">Section #1</span>
+                        </div>
+                        <div class="level-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill" style="width: 20%"></div>
+                            </div>
+                            <div class="progress-steps">
+                                <span class="step active" data-level="1" title="PEEL Structure">1</span>
+                                <span class="step" data-level="2" title="Evidence Types">2</span>
+                                <span class="step" data-level="3" title="Connectors">3</span>
+                                <span class="step" data-level="4" title="Language">4</span>
+                                <span class="step" data-level="5" title="Summary">5</span>
+                            </div>
+                        </div>
+                        <div class="level-description" id="levelDescription">
+                            Check if your paragraph has a complete PEEL structure: Point, Evidence, Explanation, Link.
+                        </div>
+                    </div>
+
+                    <!-- Chat/Feedback Area -->
+                    <div class="feedback-chat" id="feedbackChat">
+                        <div class="chat-welcome" id="chatWelcome">
+                            <div class="welcome-icon">&#128221;</div>
+                            <h3>Welcome to the Writing Feedback System</h3>
+                            <p>Enter your paragraph on the left, then use the buttons below to receive structured feedback across 5 levels:</p>
+                            <ul class="level-list">
+                                <li><strong>Level 1:</strong> PEEL Structure Check</li>
+                                <li><strong>Level 2:</strong> Evidence Type Analysis</li>
+                                <li><strong>Level 3:</strong> Connector Detection</li>
+                                <li><strong>Level 4:</strong> Language Diagnosis</li>
+                                <li><strong>Level 5:</strong> Comprehensive Summary</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="feedback-actions">
+                        <div class="action-buttons" id="actionButtons">
+                            <!-- Level 1 Actions -->
+                            <div class="action-group" data-level="1">
+                                <button class="action-btn primary" data-action="check-peel">
+                                    <span class="btn-icon">&#128269;</span>
+                                    Check PEEL Structure
+                                </button>
+                            </div>
+                            <!-- Level 2 Actions -->
+                            <div class="action-group hidden" data-level="2">
+                                <button class="action-btn primary" data-action="check-evidence">
+                                    <span class="btn-icon">&#128202;</span>
+                                    Analyze Evidence Types
+                                </button>
+                            </div>
+                            <!-- Level 3 Actions -->
+                            <div class="action-group hidden" data-level="3">
+                                <button class="action-btn primary" data-action="check-connectors">
+                                    <span class="btn-icon">&#128279;</span>
+                                    Check Connectors
+                                </button>
+                            </div>
+                            <!-- Level 4 Actions -->
+                            <div class="action-group hidden" data-level="4">
+                                <button class="action-btn primary" data-action="check-language">
+                                    <span class="btn-icon">&#9998;</span>
+                                    Language Diagnosis
+                                </button>
+                            </div>
+                            <!-- Level 5 Actions -->
+                            <div class="action-group hidden" data-level="5">
+                                <button class="action-btn primary" data-action="final-summary">
+                                    <span class="btn-icon">&#127919;</span>
+                                    Get Final Summary
+                                </button>
+                            </div>
+                        </div>
+                        <div class="level-navigation">
+                            <button class="level-nav-btn" id="prevLevel" disabled>
+                                &larr; Previous Level
+                            </button>
+                            <button class="level-nav-btn primary" id="nextLevel">
+                                Next Level &rarr;
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="app-footer">
+                <div class="footer-content">
+                    <div class="footer-logo">
+                        <div class="ruc-logo">
+                            <span class="logo-text">RUC</span>
+                        </div>
+                        <span class="university-name">Renmin University of China</span>
+                    </div>
+                    <div class="footer-copyright">
+                        <p>&copy; 2025 School of Foreign Languages, Renmin University of China</p>
+                        <p>All Rights Reserved</p>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
