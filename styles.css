@@ -143,8 +143,8 @@ html, body {
 
 .paragraph-item-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 4px;
     margin-bottom: 4px;
 }
 
@@ -152,6 +152,7 @@ html, body {
     font-size: 13px;
     font-weight: 600;
     color: var(--text-primary);
+    flex: 1;
 }
 
 .paragraph-item.active .paragraph-item-title {
@@ -178,6 +179,43 @@ html, body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* Drag Handle */
+.paragraph-item-drag-handle {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-right: 8px;
+    cursor: grab;
+    user-select: none;
+    transition: var(--transition);
+}
+
+.paragraph-item-drag-handle:hover {
+    color: var(--text-primary);
+}
+
+.paragraph-item-drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Drag and Drop States */
+.paragraph-item.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+    transform: scale(0.98);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.paragraph-item.drag-over {
+    border: 2px dashed var(--ruc-red);
+    background: var(--ruc-red-light);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(190, 10, 48, 0.2);
+}
+
+.paragraph-item[draggable="true"] {
+    cursor: move;
 }
 
 /* Add Paragraph Button */

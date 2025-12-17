@@ -118,8 +118,11 @@ function updateLineNumbers() {
 
 function updateParagraphList() {
     const html = state.paragraphs.map((p, idx) => `
-        <li class="paragraph-item ${idx === state.currentIndex ? 'active' : ''}" data-index="${idx}">
+        <li class="paragraph-item ${idx === state.currentIndex ? 'active' : ''}"
+            data-index="${idx}"
+            draggable="true">
             <div class="paragraph-item-header">
+                <span class="paragraph-item-drag-handle">⋮⋮</span>
                 <span class="paragraph-item-title">#${idx + 1} ${p.title}</span>
                 <span class="paragraph-item-level">L${p.level}</span>
             </div>
@@ -131,11 +134,18 @@ function updateParagraphList() {
 
     // Add click handlers
     document.querySelectorAll('.paragraph-item').forEach(item => {
-        item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
+            // 如果点击的是拖拽手柄，不触发切换
+            if (e.target.classList.contains('paragraph-item-drag-handle')) {
+                return;
+            }
             const index = parseInt(item.dataset.index);
             switchParagraph(index);
         });
     });
+
+    // Add drag handlers
+    initDragAndDrop();
 }
 
 function updateEditor() {
@@ -191,27 +201,38 @@ function updateFeedbackChat() {
     const paragraph = getCurrentParagraph();
 
     if (paragraph.history.length === 0) {
-        elements.chatWelcome.classList.remove('hidden');
-    } else {
-        elements.chatWelcome.classList.add('hidden');
-    }
-
-    const messagesHtml = paragraph.history.map(msg => {
-        if (msg.type === 'feedback-card') {
-            return msg.html;
-        }
-        return `
-            <div class="chat-message ${msg.sender}">
-                <div class="message-bubble">
-                    <div class="message-content">${msg.text}</div>
-                    <div class="message-time">${msg.timestamp}</div>
-                </div>
+        // 没有历史记录：显示欢迎消息
+        elements.feedbackChat.innerHTML = `
+            <div class="chat-welcome" id="chatWelcome">
+                <div class="welcome-icon">&#128221;</div>
+                <h3>Welcome to the Writing Feedback System</h3>
+                <p>Enter your paragraph on the left, then use the buttons below to receive structured feedback across 5 levels:</p>
+                <ul class="level-list">
+                    <li><strong>Level 1:</strong> PEEL Structure Check</li>
+                    <li><strong>Level 2:</strong> Evidence Type Analysis</li>
+                    <li><strong>Level 3:</strong> Connector Detection</li>
+                    <li><strong>Level 4:</strong> Language Diagnosis</li>
+                    <li><strong>Level 5:</strong> Comprehensive Summary</li>
+                </ul>
             </div>
         `;
-    }).join('');
-
-    // Keep welcome if no history, otherwise show messages
-    if (paragraph.history.length > 0) {
+        // 重新获取 chatWelcome 元素引用
+        elements.chatWelcome = document.getElementById('chatWelcome');
+    } else {
+        // 有历史记录：显示消息
+        const messagesHtml = paragraph.history.map(msg => {
+            if (msg.type === 'feedback-card') {
+                return msg.html;
+            }
+            return `
+                <div class="chat-message ${msg.sender}">
+                    <div class="message-bubble">
+                        <div class="message-content">${msg.text}</div>
+                        <div class="message-time">${msg.timestamp}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
         elements.feedbackChat.innerHTML = messagesHtml;
     }
 
@@ -251,6 +272,100 @@ function addNewParagraph() {
     };
     state.paragraphs.push(newParagraph);
     switchParagraph(state.paragraphs.length - 1);
+}
+
+// ============================================
+// Drag and Drop Functionality
+// ============================================
+
+let dragState = {
+    draggedIndex: null,
+    draggedElement: null
+};
+
+function initDragAndDrop() {
+    const items = document.querySelectorAll('.paragraph-item');
+
+    items.forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('drop', handleDrop);
+        item.addEventListener('dragend', handleDragEnd);
+        item.addEventListener('dragenter', handleDragEnter);
+        item.addEventListener('dragleave', handleDragLeave);
+    });
+}
+
+function handleDragStart(e) {
+    dragState.draggedIndex = parseInt(e.currentTarget.dataset.index);
+    dragState.draggedElement = e.currentTarget;
+
+    e.currentTarget.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.currentTarget.innerHTML);
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDragEnter(e) {
+    const targetIndex = parseInt(e.currentTarget.dataset.index);
+    if (targetIndex !== dragState.draggedIndex) {
+        e.currentTarget.classList.add('drag-over');
+    }
+}
+
+function handleDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+
+    const targetIndex = parseInt(e.currentTarget.dataset.index);
+
+    if (dragState.draggedIndex !== null && dragState.draggedIndex !== targetIndex) {
+        // 保存当前编辑内容
+        state.paragraphs[state.currentIndex].content = elements.editorTextarea.value;
+
+        // 重新排序数组
+        const draggedParagraph = state.paragraphs[dragState.draggedIndex];
+        state.paragraphs.splice(dragState.draggedIndex, 1);
+        state.paragraphs.splice(targetIndex, 0, draggedParagraph);
+
+        // 更新当前索引
+        if (state.currentIndex === dragState.draggedIndex) {
+            state.currentIndex = targetIndex;
+        } else if (dragState.draggedIndex < state.currentIndex && targetIndex >= state.currentIndex) {
+            state.currentIndex--;
+        } else if (dragState.draggedIndex > state.currentIndex && targetIndex <= state.currentIndex) {
+            state.currentIndex++;
+        }
+
+        updateAll();
+    }
+
+    e.currentTarget.classList.remove('drag-over');
+    return false;
+}
+
+function handleDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+
+    // 清除所有拖拽样式
+    document.querySelectorAll('.paragraph-item').forEach(item => {
+        item.classList.remove('drag-over', 'dragging');
+    });
+
+    dragState.draggedIndex = null;
+    dragState.draggedElement = null;
 }
 
 // ============================================
