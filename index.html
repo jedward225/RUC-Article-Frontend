@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RUC English Writing Assistant</title>
+    <title>WriteWise: RUC English Writing Assistant</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
@@ -34,7 +34,7 @@
                     <span></span>
                     <span></span>
                 </button>
-                <h1>RUC English Writing Assistant</h1>
+                <h1>WriteWise: RUC English Writing Assistant</h1>
                 <div class="header-actions">
                     <span class="paragraph-indicator" id="paragraphIndicator">Paragraph 1 of 1</span>
                 </div>
@@ -43,7 +43,7 @@
             <!-- Content Panels -->
             <div class="content-panels">
                 <!-- Left Panel - Editor -->
-                <div class="panel editor-panel">
+                <div class="panel editor-panel" id="editorPanel">
                     <div class="panel-header">
                         <div class="editor-toolbar">
                             <span class="toolbar-item active">Source</span>
@@ -51,6 +51,13 @@
                             <div class="toolbar-divider"></div>
                             <span class="toolbar-item">Bold</span>
                             <span class="toolbar-item">Italic</span>
+                            <div class="toolbar-spacer"></div>
+                            <button class="toolbar-item history-btn" id="historyBtn" title="View version history">
+                                📜 History Version
+                            </button>
+                            <span class="toolbar-item font-size-label" id="fontSizeLabel">14px</span>
+                            <button class="toolbar-item font-size-btn" id="decreaseFontSize" title="Decrease font size">−</button>
+                            <button class="toolbar-item font-size-btn" id="increaseFontSize" title="Increase font size">+</button>
                         </div>
                     </div>
                     <div class="editor-container">
@@ -77,8 +84,11 @@
                     </div>
                 </div>
 
+                <!-- Resize Handle -->
+                <div class="resize-handle" id="resizeHandle"></div>
+
                 <!-- Right Panel - Feedback -->
-                <div class="panel feedback-panel">
+                <div class="panel feedback-panel" id="feedbackPanel">
                     <!-- Level Indicator -->
                     <div class="level-indicator">
                         <div class="level-header">
@@ -188,6 +198,38 @@
                 </div>
             </footer>
         </main>
+    </div>
+
+    <!-- History Version Modal -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Version History</h2>
+                <button class="modal-close" id="closeHistoryModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="history-sidebar">
+                    <h3>Recent Versions</h3>
+                    <div class="history-list" id="historyList">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+                <div class="history-content">
+                    <div class="history-content-header">
+                        <h3 id="historyContentTitle">Select a version</h3>
+                        <button class="btn-copy" id="copyHistoryContent" title="Copy to clipboard">
+                            📋 Copy
+                        </button>
+                    </div>
+                    <textarea
+                        class="history-textarea"
+                        id="historyTextarea"
+                        readonly
+                        placeholder="Select a version from the left to view its content..."
+                    ></textarea>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>

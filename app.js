@@ -42,7 +42,8 @@ const INITIAL_PARAGRAPHS = [
         title: 'Sample Paragraph',
         content: 'Technology has significantly transformed education in the 21st century. For example, online learning platforms like Coursera and edX have made quality education accessible to millions worldwide. This accessibility means that students from developing countries can now learn from top universities without leaving their homes. Moreover, digital tools have enabled personalized learning experiences that adapt to individual student needs. In conclusion, while technology brings challenges, its benefits to education are undeniable.',
         level: 1,
-        history: []
+        history: [],
+        contentHistory: [] // Version history
     }
 ];
 
@@ -54,7 +55,9 @@ let state = {
     paragraphs: JSON.parse(JSON.stringify(INITIAL_PARAGRAPHS)),
     currentIndex: 0,
     isProcessing: false,
-    sidebarOpen: true
+    sidebarOpen: true,
+    editorFontSize: 14, // Default font size in pixels
+    selectedHistoryIndex: null // Currently selected history version
 };
 
 // ============================================
@@ -81,7 +84,20 @@ const elements = {
     chatWelcome: document.getElementById('chatWelcome'),
     actionButtons: document.getElementById('actionButtons'),
     prevLevel: document.getElementById('prevLevel'),
-    nextLevel: document.getElementById('nextLevel')
+    nextLevel: document.getElementById('nextLevel'),
+    editorPanel: document.getElementById('editorPanel'),
+    feedbackPanel: document.getElementById('feedbackPanel'),
+    resizeHandle: document.getElementById('resizeHandle'),
+    fontSizeLabel: document.getElementById('fontSizeLabel'),
+    decreaseFontSize: document.getElementById('decreaseFontSize'),
+    increaseFontSize: document.getElementById('increaseFontSize'),
+    historyBtn: document.getElementById('historyBtn'),
+    historyModal: document.getElementById('historyModal'),
+    closeHistoryModal: document.getElementById('closeHistoryModal'),
+    historyList: document.getElementById('historyList'),
+    historyTextarea: document.getElementById('historyTextarea'),
+    historyContentTitle: document.getElementById('historyContentTitle'),
+    copyHistoryContent: document.getElementById('copyHistoryContent')
 };
 
 // ============================================
@@ -268,7 +284,8 @@ function addNewParagraph() {
         title: `Paragraph ${state.paragraphs.length + 1}`,
         content: '',
         level: 1,
-        history: []
+        history: [],
+        contentHistory: []
     };
     state.paragraphs.push(newParagraph);
     switchParagraph(state.paragraphs.length - 1);
@@ -369,6 +386,95 @@ function handleDragEnd(e) {
 }
 
 // ============================================
+// Panel Resize Functionality
+// ============================================
+
+let resizeState = {
+    isResizing: false,
+    startX: 0,
+    startWidth: 0
+};
+
+function initPanelResize() {
+    elements.resizeHandle.addEventListener('mousedown', startResize);
+    document.addEventListener('mousemove', doResize);
+    document.addEventListener('mouseup', stopResize);
+}
+
+function startResize(e) {
+    resizeState.isResizing = true;
+    resizeState.startX = e.clientX;
+
+    // Get the current width of the feedback panel
+    const feedbackRect = elements.feedbackPanel.getBoundingClientRect();
+    resizeState.startWidth = feedbackRect.width;
+
+    // Add dragging class for visual feedback
+    elements.resizeHandle.classList.add('dragging');
+
+    // Prevent text selection during drag
+    document.body.style.userSelect = 'none';
+
+    e.preventDefault();
+}
+
+function doResize(e) {
+    if (!resizeState.isResizing) return;
+
+    // Calculate the change in mouse position
+    const deltaX = resizeState.startX - e.clientX;
+
+    // Calculate new width for feedback panel
+    const newWidth = resizeState.startWidth + deltaX;
+
+    // Get the container width to calculate percentages
+    const containerRect = elements.feedbackPanel.parentElement.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+
+    // Calculate the percentage of the new feedback panel width
+    const feedbackWidthPercent = (newWidth / containerWidth) * 100;
+
+    // Calculate the percentage of the editor panel width
+    // Editor width = 100% - feedback width - handle width (8px)
+    const handleWidthPercent = (8 / containerWidth) * 100;
+    const editorWidthPercent = 100 - feedbackWidthPercent - handleWidthPercent;
+
+    // Apply constraints: editor should be between minEditorPercent and maxEditorPercent
+    // This means feedback should be between (100 - maxEditorPercent) and (100 - minEditorPercent)
+    const minEditorPercent = 30;
+    const maxEditorPercent = 75;
+
+    if (editorWidthPercent < minEditorPercent) {
+        // Editor is too small, set to minimum
+        const maxFeedbackPercent = 100 - minEditorPercent - handleWidthPercent;
+        elements.feedbackPanel.style.width = `${maxFeedbackPercent}%`;
+        elements.editorPanel.style.flex = 'none';
+        elements.editorPanel.style.width = `${minEditorPercent}%`;
+    } else if (editorWidthPercent > maxEditorPercent) {
+        // Editor is too large, set to maximum
+        const minFeedbackPercent = 100 - maxEditorPercent - handleWidthPercent;
+        elements.feedbackPanel.style.width = `${minFeedbackPercent}%`;
+        elements.editorPanel.style.flex = 'none';
+        elements.editorPanel.style.width = `${maxEditorPercent}%`;
+    } else {
+        // Within valid range
+        elements.feedbackPanel.style.width = `${feedbackWidthPercent}%`;
+        elements.editorPanel.style.flex = 'none';
+        elements.editorPanel.style.width = `${editorWidthPercent}%`;
+    }
+
+    e.preventDefault();
+}
+
+function stopResize(e) {
+    if (!resizeState.isResizing) return;
+
+    resizeState.isResizing = false;
+    elements.resizeHandle.classList.remove('dragging');
+    document.body.style.userSelect = '';
+}
+
+// ============================================
 // Level Management
 // ============================================
 
@@ -379,6 +485,165 @@ function changeLevel(delta) {
     if (newLevel >= 1 && newLevel <= 5) {
         paragraph.level = newLevel;
         updateLevelIndicator();
+    }
+}
+
+// ============================================
+// Version History Management
+// ============================================
+
+function saveContentVersion(type) {
+    const paragraph = getCurrentParagraph();
+    const content = elements.editorTextarea.value.trim();
+
+    // Don't save if content is empty
+    if (!content) return;
+
+    // Create version object
+    const version = {
+        id: generateId(),
+        type: type, // 'manual' (Ctrl+S) or 'feedback' (咨询按钮)
+        content: content,
+        timestamp: new Date().toISOString(),
+        displayTime: new Date().toLocaleString()
+    };
+
+    // Initialize contentHistory if it doesn't exist
+    if (!paragraph.contentHistory) {
+        paragraph.contentHistory = [];
+    }
+
+    // Add to beginning of array (newest first)
+    paragraph.contentHistory.unshift(version);
+
+    // Keep only last 10 versions
+    if (paragraph.contentHistory.length > 10) {
+        paragraph.contentHistory = paragraph.contentHistory.slice(0, 10);
+    }
+}
+
+function openHistoryModal() {
+    const paragraph = getCurrentParagraph();
+
+    // Save current content before opening
+    paragraph.content = elements.editorTextarea.value;
+
+    // Reset selection
+    state.selectedHistoryIndex = null;
+
+    // Show modal
+    elements.historyModal.classList.add('active');
+
+    // Render history list
+    renderHistoryList();
+}
+
+function closeHistoryModal() {
+    elements.historyModal.classList.remove('active');
+    state.selectedHistoryIndex = null;
+}
+
+function renderHistoryList() {
+    const paragraph = getCurrentParagraph();
+    const history = paragraph.contentHistory || [];
+
+    if (history.length === 0) {
+        elements.historyList.innerHTML = `
+            <div class="history-empty">
+                <div class="history-empty-icon">📭</div>
+                <p>No version history yet.<br>Save versions with Ctrl+S or by clicking feedback buttons.</p>
+            </div>
+        `;
+        elements.historyTextarea.value = '';
+        elements.historyContentTitle.textContent = 'No versions available';
+        elements.copyHistoryContent.disabled = true;
+        return;
+    }
+
+    const html = history.map((version, index) => {
+        const typeLabel = version.type === 'manual' ? 'Manual Save' : 'Feedback Save';
+        const preview = version.content.substring(0, 50) + (version.content.length > 50 ? '...' : '');
+
+        return `
+            <div class="history-item ${state.selectedHistoryIndex === index ? 'active' : ''}"
+                 data-index="${index}">
+                <div class="history-item-type">${typeLabel}</div>
+                <div class="history-item-time">${version.displayTime}</div>
+                <div class="history-item-preview">${preview}</div>
+            </div>
+        `;
+    }).join('');
+
+    elements.historyList.innerHTML = html;
+
+    // Add click handlers
+    document.querySelectorAll('.history-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const index = parseInt(item.dataset.index);
+            selectHistoryVersion(index);
+        });
+    });
+
+    elements.copyHistoryContent.disabled = false;
+}
+
+function selectHistoryVersion(index) {
+    const paragraph = getCurrentParagraph();
+    const history = paragraph.contentHistory || [];
+
+    if (index < 0 || index >= history.length) return;
+
+    state.selectedHistoryIndex = index;
+    const version = history[index];
+
+    // Update UI
+    elements.historyTextarea.value = version.content;
+    elements.historyContentTitle.textContent = `Version: ${version.displayTime}`;
+
+    // Update active state
+    document.querySelectorAll('.history-item').forEach((item, i) => {
+        item.classList.toggle('active', i === index);
+    });
+}
+
+function copyHistoryContent() {
+    const text = elements.historyTextarea.value;
+
+    if (!text) return;
+
+    navigator.clipboard.writeText(text).then(() => {
+        // Visual feedback
+        const originalText = elements.copyHistoryContent.textContent;
+        elements.copyHistoryContent.textContent = '✓ Copied!';
+        setTimeout(() => {
+            elements.copyHistoryContent.textContent = originalText;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+    });
+}
+
+// ============================================
+// Font Size Management
+// ============================================
+
+function updateEditorFontSize() {
+    elements.editorTextarea.style.fontSize = `${state.editorFontSize}px`;
+    elements.lineNumbers.style.fontSize = `${state.editorFontSize}px`;
+    elements.fontSizeLabel.textContent = `${state.editorFontSize}px`;
+}
+
+function increaseFontSize() {
+    if (state.editorFontSize < 24) { // Maximum 24px
+        state.editorFontSize += 1;
+        updateEditorFontSize();
+    }
+}
+
+function decreaseFontSize() {
+    if (state.editorFontSize > 10) { // Minimum 10px
+        state.editorFontSize -= 1;
+        updateEditorFontSize();
     }
 }
 
@@ -829,6 +1094,9 @@ async function handleAction(action) {
         return;
     }
 
+    // Save version before processing feedback
+    saveContentVersion('feedback');
+
     state.isProcessing = true;
 
     // Add user message
@@ -937,6 +1205,44 @@ function initEventListeners() {
     elements.editorTextarea.addEventListener('scroll', () => {
         elements.lineNumbers.scrollTop = elements.editorTextarea.scrollTop;
     });
+
+    // Font size controls
+    elements.increaseFontSize.addEventListener('click', increaseFontSize);
+    elements.decreaseFontSize.addEventListener('click', decreaseFontSize);
+
+    // History version controls
+    elements.historyBtn.addEventListener('click', openHistoryModal);
+    elements.closeHistoryModal.addEventListener('click', closeHistoryModal);
+    elements.copyHistoryContent.addEventListener('click', copyHistoryContent);
+
+    // Close modal when clicking outside
+    elements.historyModal.addEventListener('click', (e) => {
+        if (e.target === elements.historyModal) {
+            closeHistoryModal();
+        }
+    });
+
+    // Keyboard shortcut: Ctrl+S to save version
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            saveContentVersion('manual');
+
+            // Visual feedback
+            const originalText = elements.historyBtn.textContent;
+            elements.historyBtn.textContent = '✓ Saved';
+            setTimeout(() => {
+                elements.historyBtn.textContent = originalText;
+            }, 1500);
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && elements.historyModal.classList.contains('active')) {
+            closeHistoryModal();
+        }
+    });
 }
 
 // ============================================
@@ -945,11 +1251,15 @@ function initEventListeners() {
 
 function init() {
     initEventListeners();
+    initPanelResize();
     updateAll();
 
     // Set initial content
     elements.editorTextarea.value = getCurrentParagraph().content;
     updateLineNumbers();
+
+    // Set initial font size
+    updateEditorFontSize();
 }
 
 // Start the application
